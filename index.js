@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const express = require("express");
 const cors = require("cors");
 const app = express();
@@ -25,6 +25,9 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const jobsCollection = client.db("jobPortal").collection("jobs");
+    const applicationsCollection = client
+      .db("jobPortal")
+      .collection("applications");
 
     // get jobs
 
@@ -32,6 +35,46 @@ async function run() {
       const result = await jobsCollection.find().toArray();
       res.send(result);
     });
+
+    // get by id
+    app.get("/jobs/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await jobsCollection.findOne(query);
+      res.send(result);
+    });
+
+    // job applications
+
+    // get
+
+    app.get("/applications", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+
+      const result = await applicationsCollection.find(query).toArray();
+
+      for (let application of result) {
+        const id = application.jobId;
+        const query = { _id: new ObjectId(id) };
+        const job = await jobsCollection.findOne(query);
+        application.company = job.company;
+        application.title = job.title;
+        application.company_logo = job.company_logo;
+      }
+      res.send(result);
+    });
+
+    // post data for job applicants
+
+    app.post("/applications", async (req, res) => {
+      const applications = req.body;
+      const result = await applicationsCollection.insertOne(applications);
+      // console.log(applications);
+      res.send(result);
+    });
+
+    // get data for job applications by applicants
 
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
