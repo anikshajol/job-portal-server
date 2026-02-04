@@ -15,6 +15,24 @@ app.use(
   }),
 );
 app.use(express.json());
+app.use(cookieParser());
+
+const verifyToken = (req, res, next) => {
+  const token = req?.cookies?.accessToken;
+
+  console.log("cookies in the middleware");
+  if (!token) {
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET_KEY, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: "Unauthorized access" });
+    }
+    console.log(decoded);
+  });
+  next();
+};
 
 // mongodb
 
@@ -51,6 +69,7 @@ async function run() {
         httpOnly: true,
         secure: false,
         // sameSite: "lax",
+        maxAge: 60 * 60 * 1000,
       });
 
       res.send({ success: true });
@@ -101,10 +120,11 @@ async function run() {
 
     // get
 
-    app.get("/applications", async (req, res) => {
+    app.get("/applications", verifyToken, async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
       const result = await applicationsCollection.find(query).toArray();
+      // console.log("inside application api", req.cookies);
 
       // eta hoche data arek collection er document theke ana, eta valo way na,
       for (let application of result) {
